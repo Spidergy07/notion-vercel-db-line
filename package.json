@@ -1,0 +1,20 @@
+{
+  "name": "line-gemini-notion-bot",
+  "version": "1.0.0",
+  "description": "LINE Chatbot that uses Gemini to parse messages and saves to Notion",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@line/bot-sdk": "^7.5.2",
+    "@notionhq/client": "^2.2.14",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
