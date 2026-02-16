@@ -135,16 +135,21 @@ async function handleEvent(event) {
                 continue;
             }
 
-            // Check for duplicate before adding
+            // Check for duplicate before adding (Upsert Strategy)
             const isDup = await isDuplicate(data.summary, data.start);
             if (isDup) {
-                console.log(`Duplicate detected for: ${data.summary}`);
-                results.push({ summary: data.summary, url: "https://notion.so", emoji: data.emoji, alreadyExists: true });
+                console.log(`Duplicate detected for: ${data.summary}, attempting UPDATE instead.`);
+                const updateSuccess = await updateNotionPage(data);
+                if (updateSuccess) {
+                    results.push({ summary: data.summary, url: "https://notion.so", emoji: data.emoji, status: 'updated' });
+                } else {
+                    results.push({ summary: data.summary, url: "https://notion.so", emoji: data.emoji, status: 'failed_update' });
+                }
                 continue;
             }
 
             const notionUrl = await addToNotion(data);
-            results.push({ summary: data.summary, url: notionUrl, emoji: data.emoji });
+            results.push({ summary: data.summary, url: notionUrl, emoji: data.emoji, status: 'created' });
         }
     }
 
@@ -155,7 +160,11 @@ async function handleEvent(event) {
         });
     }
 
-    const summaryList = results.map(r => r.alreadyExists ? `⚠️ ${r.summary} (มีอยู่แล้ว)` : `✅ ${r.summary}`).join('\n');
+    const summaryList = results.map(r => {
+        if (r.status === 'updated') return `📝 ${r.summary} (อัปเดตข้อมูล)`;
+        if (r.status === 'created') return `✅ ${r.summary} (สร้างใหม่)`;
+        return `⚠️ ${r.summary} (อัปเดตไม่สำเร็จ)`;
+    }).join('\n');
     return lineClient.replyMessage(event.replyToken, {
         type: 'text',
         text: `🎉 สรุปผลการทำงาน: (Model: ${aiResult.usedModel})\n\n${summaryList}\n\n🔗 ดูที่: ${results[0].url}`
@@ -228,6 +237,7 @@ async function processWithGemini(userText) {
          - TIME LIMIT: If providing an end time for the final day, NEVER use 00:00. Use 23:59 instead.
          - **TIMEZONE**: Always output dates in ISO 8601 format with Thailand offset (e.g., '2026-02-03T17:00:00+07:00'). Do NOT use UTC 'Z'.
          - Support BE years: Always convert Thai years (2568, 2569) to Gregorian (2025, 2026).
+         - Support SHORT BE years: If year is 2 digits (e.g. 69), assume 2569 -> 2026.
          - If NO time is specificed, set "start" as "YYYY-MM-DD" (date only).
 
     3. DELETE: Remove events.
